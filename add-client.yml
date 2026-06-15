@@ -1,18 +1,13 @@
 ---
 - hosts: localhost
-  gather_facts: no
-
----
-- hosts: localhost
   gather_facts: false
 
   vars:
-    client_name: "{{ client_name }}"
-    client_ip: "{{ client_ip }}"
-    client_lan: "{{ client_lan }}"
+    client_name: "{{ client_name | default('test_client') }}"
+    client_ip: "{{ client_ip | default('10.100.1.2') }}"
+    client_lan: "{{ client_lan | default('10.0.0.0/24') }}"
 
   tasks:
-
     - name: Generate private key
       shell: wg genkey
       register: privatekey
@@ -21,7 +16,7 @@
       shell: echo "{{ privatekey.stdout }}" | wg pubkey
       register: publickey
 
-    - name: Show configuration
+    - name: Show WireGuard client configuration
       debug:
         msg:
           - "CLIENT={{ client_name }}"
@@ -29,7 +24,3 @@
           - "LAN={{ client_lan }}"
           - "PRIVATE={{ privatekey.stdout }}"
           - "PUBLIC={{ publickey.stdout }}"
-  tasks:
-    - name: Test AWX
-      debug:
-        msg: "AWX działa poprawnie"
