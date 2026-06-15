@@ -13,10 +13,10 @@
         state: directory
         mode: "0700"
       loop:
-        - /opt/wireguard-manager
-        - /opt/wireguard-manager/clients
-        - /opt/wireguard-manager/mikrotik
-        - /opt/wireguard-manager/backups
+        - /tmp/wireguard-manager
+        - /tmp/wireguard-manager/clients
+        - /tmp/wireguard-manager/mikrotik
+        - /tmp/wireguard-manager/backups
 
     - name: Ustaw zmienne klienta
       set_fact:
@@ -36,7 +36,7 @@
 
     - name: Zapisz konfigurację klienta
       copy:
-        dest: "/opt/wireguard-manager/clients/{{ c_name }}.conf"
+        dest: "/tmp/wireguard-manager/clients/{{ c_name }}.conf"
         mode: "0600"
         content: |
           [Interface]
@@ -52,7 +52,7 @@
 
     - name: Zapisz konfigurację MikroTik
       copy:
-        dest: "/opt/wireguard-manager/mikrotik/{{ c_name }}.rsc"
+        dest: "/tmp/wireguard-manager/mikrotik/{{ c_name }}.rsc"
         mode: "0600"
         content: |
           /interface wireguard add name=wg-vps mtu=1420
@@ -66,5 +66,5 @@
           - "VPN_IP={{ c_ip }}"
           - "LAN={{ c_lan }}"
           - "PUBLIC_KEY_KLIENTA={{ client_public_key.stdout }}"
-          - "PLIK_KLIENTA=/opt/wireguard-manager/clients/{{ c_name }}.conf"
-          - "PLIK_MIKROTIK=/opt/wireguard-manager/mikrotik/{{ c_name }}.rsc"
+          - "PLIK_KLIENTA=/tmp/wireguard-manager/clients/{{ c_name }}.conf"
+          - "PLIK_MIKROTIK=/tmp/wireguard-manager/mikrotik/{{ c_name }}.rsc"
