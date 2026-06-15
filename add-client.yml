@@ -2,16 +2,11 @@
 - hosts: localhost
   gather_facts: false
 
-  vars:
-    client_name: "{{ client_name | default('Firma_Kowalski') }}"
-    client_ip: "{{ client_ip | default('10.100.1.2') }}"
-    client_lan: "{{ client_lan | default('10.0.0.0/24') }}"
-
   tasks:
     - name: Test variables
       debug:
         msg:
-          - "CLIENT={{ client_name }}"
-          - "IP={{ client_ip }}"
-          - "LAN={{ client_lan }}"
-          - "AWX/Semaphore działa"
+          - "CLIENT={{ client_name | default('Firma_Kowalski') }}"
+          - "IP={{ client_ip | default('10.100.1.2') }}"
+          - "LAN={{ client_lan | default('10.0.0.0/24') }}"
+          - "Semaphore działa"
