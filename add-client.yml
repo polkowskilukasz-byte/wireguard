@@ -1,28 +1,40 @@
 ---
 - hosts: vps
   gather_facts: false
+  become: true
 
   vars:
     wg_server_public_key: "jCIpvmKTHWDAF2GjYFuyWGja/A8PksiPPQWd1iIRXkk="
     wg_server_endpoint: "164.132.45.117:51820"
+    wg_server_ip: "164.132.45.117"
+    wg_server_port: "51820"
 
   tasks:
-    - name: Utwórz katalogi
-      file:
-        path: "{{ item }}"
-        state: directory
-        mode: "0700"
-      loop:
-        - /tmp/wireguard-manager
-        - /tmp/wireguard-manager/clients
-        - /tmp/wireguard-manager/mikrotik
-        - /tmp/wireguard-manager/backups
-
     - name: Ustaw zmienne klienta
       set_fact:
         c_name: "{{ client_name | default('Firma_Kowalski') }}"
         c_ip: "{{ client_ip | default('10.100.1.2') }}"
         c_lan: "{{ client_lan | default('10.0.0.0/24') }}"
+
+    - name: Utwórz katalogi
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: "0755"
+      loop:
+        - /opt/wireguard-manager
+        - /opt/wireguard-manager/backups
+        - /var/www/vpn-files/clients
+        - "/var/www/vpn-files/clients/{{ c_name }}"
+
+    - name: Backup wg0.conf
+      copy:
+        src: /etc/wireguard/wg0.conf
+        dest: "/opt/wireguard-manager/backups/wg0.conf.{{ c_name }}"
+        remote_src: true
+        mode: "0600"
 
     - name: Generuj klucz prywatny klienta
       shell: wg genkey
@@ -34,10 +46,26 @@
       register: client_public_key
       changed_when: true
 
-    - name: Zapisz konfigurację klienta
+    - name: Dopisz peera do wg0.conf
+      blockinfile:
+        path: /etc/wireguard/wg0.conf
+        marker: "# {mark} CLIENT {{ c_name }}"
+        block: |
+          [Peer]
+          PublicKey = {{ client_public_key.stdout }}
+          AllowedIPs = {{ c_ip }}/32,{{ c_lan }}
+
+    - name: Restart WireGuard
+      systemd:
+        name: wg-quick@wg0
+        state: restarted
+
+    - name: Zapisz konfigurację klienta Windows Mac Telefon
       copy:
-        dest: "/tmp/wireguard-manager/clients/{{ c_name }}.conf"
-        mode: "0600"
+        dest: "/var/www/vpn-files/clients/{{ c_name }}/{{ c_name }}.conf"
+        owner: ubuntu
+        group: ubuntu
+        mode: "0644"
         content: |
           [Interface]
           PrivateKey = {{ client_private_key.stdout }}
@@ -52,19 +80,37 @@
 
     - name: Zapisz konfigurację MikroTik
       copy:
-        dest: "/tmp/wireguard-manager/mikrotik/{{ c_name }}.rsc"
-        mode: "0600"
+        dest: "/var/www/vpn-files/clients/{{ c_name }}/{{ c_name }}.rsc"
+        owner: ubuntu
+        group: ubuntu
+        mode: "0644"
         content: |
           /interface wireguard add name=wg-vps mtu=1420
           /ip address add address={{ c_ip }}/24 interface=wg-vps
-          /interface wireguard peers add interface=wg-vps public-key="{{ wg_server_public_key }}" endpoint-address=164.132.45.117 endpoint-port=51820 allowed-address=10.100.0.0/24 persistent-keepalive=25s
+          /interface wireguard peers add interface=wg-vps public-key="{{ wg_server_public_key }}" endpoint-address={{ wg_server_ip }} endpoint-port={{ wg_server_port }} allowed-address=10.100.0.0/24 persistent-keepalive=25s
 
-    - name: Pokaż dane klienta
+    - name: Zapisz informacje
+      copy:
+        dest: "/var/www/vpn-files/clients/{{ c_name }}/info.txt"
+        owner: ubuntu
+        group: ubuntu
+        mode: "0644"
+        content: |
+          Klient: {{ c_name }}
+          VPN IP: {{ c_ip }}
+          LAN: {{ c_lan }}
+          PublicKey klienta: {{ client_public_key.stdout }}
+
+          Pliki:
+          {{ c_name }}.conf - komputer/telefon
+          {{ c_name }}.rsc - MikroTik
+
+    - name: Pokaż linki do pobrania
       debug:
         msg:
           - "KLIENT={{ c_name }}"
           - "VPN_IP={{ c_ip }}"
           - "LAN={{ c_lan }}"
           - "PUBLIC_KEY_KLIENTA={{ client_public_key.stdout }}"
-          - "PLIK_KLIENTA=/tmp/wireguard-manager/clients/{{ c_name }}.conf"
-          - "PLIK_MIKROTIK=/tmp/wireguard-manager/mikrotik/{{ c_name }}.rsc"
+          - "POBIERZ_CONF=https://vpn.instal-tom.com/clients/{{ c_name }}/{{ c_name }}.conf"
+          - "POBIERZ_RSC=https://vpn.instal-tom.com/clients/{{ c_name }}/{{ c_name }}.rsc"
