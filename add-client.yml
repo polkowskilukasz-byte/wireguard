@@ -114,3 +114,13 @@
           - "PUBLIC_KEY_KLIENTA={{ client_public_key.stdout }}"
           - "POBIERZ_CONF=https://vpn.instal-tom.com/clients/{{ c_name }}/{{ c_name }}.conf"
           - "POBIERZ_RSC=https://vpn.instal-tom.com/clients/{{ c_name }}/{{ c_name }}.rsc"
+
+    - name: Przeładuj WireGuard bez restartu interfejsu
+
+      shell: wg syncconf wg0 <(wg-quick strip wg0)
+
+      args:
+
+        executable: /bin/bash
+
+      changed_when: true
