@@ -1,15 +1,14 @@
 ---
-- hosts: vps
+- hosts: localhost
   gather_facts: false
   become: true
 
   vars:
     wg_server_public_key: "jCIpvmKTHWDAF2GjYFuyWGja/A8PksiPPQWd1iIRXkk="
     wg_server_endpoint: "164.132.45.117:51820"
-    wg_server_ip: "164.132.45.117"
-    wg_server_port: "51820"
 
   tasks:
+
     - name: Ustaw zmienne klienta
       set_fact:
         c_name: "{{ client_name | default('Firma_Kowalski') }}"
@@ -55,11 +54,11 @@
           PublicKey = {{ client_public_key.stdout }}
           AllowedIPs = {{ c_ip }}/32,{{ c_lan }}
 
-    - name: Przeładuj WireGuard przez systemctl
-      shell: sudo systemctl reload-or-restart wg-quick@wg0
+    - name: Przeładuj WireGuard
+      shell: systemctl reload-or-restart wg-quick@wg0
       changed_when: true
 
-    - name: Przeładuj WireGuard przez systemctl
+    - name: Zapisz konfigurację WireGuard
       copy:
         dest: "/var/www/vpn-files/clients/{{ c_name }}/{{ c_name }}.conf"
         owner: ubuntu
@@ -77,29 +76,29 @@
           AllowedIPs = 10.100.0.0/24,{{ c_lan }}
           PersistentKeepalive = 25
 
-- name: Zapisz konfigurację MikroTik
-    copy:
-    dest: "/var/www/vpn-files/clients/{{ c_name }}/{{ c_name }}.rsc"
-    owner: ubuntu
-    group: ubuntu
-    mode: "0644"
-    content: |
-      /interface wireguard
-      add name=wg-vps mtu=1420
+    - name: Zapisz konfigurację MikroTik
+      copy:
+        dest: "/var/www/vpn-files/clients/{{ c_name }}/{{ c_name }}.rsc"
+        owner: ubuntu
+        group: ubuntu
+        mode: "0644" 
+        content: |
+          /interface wireguard
+          add name=wg-vps private-key="{{ client_private_key.stdout }}" mtu=1420
 
-      /ip address
-      add address={{ c_ip }}/24 interface=wg-vps
+          /ip address
+          add address={{ c_ip }}/24 interface=wg-vps
 
-      /interface wireguard peers
-      add interface=wg-vps \
-      public-key="{{ wg_server_public_key }}" \
-      endpoint-address=164.132.45.117 \
-      endpoint-port=51820 \
-      allowed-address=10.100.0.0/24 \
-      persistent-keepalive=25s
+          /interface wireguard peers
+          add interface=wg-vps \
+          public-key="{{ wg_server_public_key }}" \
+          endpoint-address=164.132.45.117 \
+          endpoint-port=51820 \
+          allowed-address=10.100.0.0/24 \
+          persistent-keepalive=25s
 
-      /ip route
-      add dst-address=10.100.0.0/24 gateway=wg-vps
+          /ip route
+          add dst-address=10.100.0.0/24 gateway=wg-vps  
     - name: Zapisz informacje
       copy:
         dest: "/var/www/vpn-files/clients/{{ c_name }}/info.txt"
@@ -113,8 +112,8 @@
           PublicKey klienta: {{ client_public_key.stdout }}
 
           Pliki:
-          {{ c_name }}.conf - komputer/telefon
-          {{ c_name }}.rsc - MikroTik
+          {{ c_name }}.conf
+          {{ c_name }}.rsc
 
     - name: Pokaż linki do pobrania
       debug:
@@ -125,5 +124,3 @@
           - "PUBLIC_KEY_KLIENTA={{ client_public_key.stdout }}"
           - "POBIERZ_CONF=https://vpn.instal-tom.com/clients/{{ c_name }}/{{ c_name }}.conf"
           - "POBIERZ_RSC=https://vpn.instal-tom.com/clients/{{ c_name }}/{{ c_name }}.rsc"
-
-    
