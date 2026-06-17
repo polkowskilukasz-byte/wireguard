@@ -59,7 +59,7 @@
       shell: sudo systemctl reload-or-restart wg-quick@wg0
       changed_when: true
 
-- name: Przeładuj WireGuard przez systemctl
+    - name: Przeładuj WireGuard przez systemctl
       copy:
         dest: "/var/www/vpn-files/clients/{{ c_name }}/{{ c_name }}.conf"
         owner: ubuntu
